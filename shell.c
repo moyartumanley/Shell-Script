@@ -27,12 +27,13 @@ int main(void) {
 
         else {
             int status;
+            char *args[10];
+            parseWhiteSpace(userInput, args);
+
             pid = fork();
             if (pid == 0) {
-                char *args[10];
-                parseWhiteSpace(userInput, args);
                 executeCommand(args);
-                // Call this break to exit out of the loop when execvp doesn't do it
+                // Call this break to exit out of the loop when execvp doesn't run to not get stuck in loop
                 break;
             }
             else {
@@ -52,12 +53,12 @@ void parseWhiteSpace(char *userInput, char **args) {
 
     word = strtok(userInput, " ");
     while (word != NULL) {
-        inputList[index] = word;
+        args[index] = word;
         word = strtok(NULL, " ");
         index ++;
     }
 
-    inputList[index] = NULL;
+    args[index] = NULL;
 }
 
 int executeCommand(char *inputs[]) {
