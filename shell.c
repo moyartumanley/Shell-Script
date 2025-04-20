@@ -51,8 +51,9 @@ void parseWhiteSpace(char *userInput, char **args) {
     char *word;
     short index = 0;
 
+    // I looked at examples of strtok: https://www.geeksforgeeks.org/strtok-strtok_r-functions-c-examples/
     word = strtok(userInput, " ");
-    while (word != NULL) {
+    while (word != NULL) { 
         args[index] = word;
         word = strtok(NULL, " ");
         index ++;
@@ -61,6 +62,8 @@ void parseWhiteSpace(char *userInput, char **args) {
     args[index] = NULL;
 }
 
+// This function takes an array of strings and then executes them
+// it uses the first string as the file name, and the whole array as arguments
 int executeCommand(char *inputs[]) {
     execvp(inputs[0], inputs);
     if (strlen(inputs[0]) > 0) {
