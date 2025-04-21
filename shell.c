@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <signal.h>
 
-void parseWhiteSpace(char *input, char **inputList);
+void parseWhiteSpace(char *userInput, char **args, int *background);
 int executeCommand(char *inputs[]);
 void printIds();
 void changeDirectory(char *args[]);
@@ -30,47 +30,47 @@ int main(void) {
             exit(0);
         }
 
-        else {
-            int status;
-            char *args[100];
-            parseWhiteSpace(userInput, args);
+        int status;
+        char *args[100];
 
-            // Handle built-in commands
-            if (strcmp(args[0], "exit") == 0) {
-                exit(0);
-            }
-            else if (strcmp(args[0], "myinfo") == 0) {
-                printIds();
-            }
+        int background = 0;
 
-            else if (strcmp(args[0], "cd") == 0) {
-                changeDirectory(args);
-            }
+        parseWhiteSpace(userInput, args, &background);
 
-            //TODO: Working on Task 6
-			// else if (strcmp(args[0], "^C" == 0)) {
-			// 	signal(SIGINT, sigint_handler);
-			// }
-
-            // if not any of the built in commands, try to execute
-            else {
-                pid = fork();
-                if (pid == 0) {
-                    executeCommand(args);                
-                }
-                else {
-                    wait(&status);
-                }
-            }
-    
+        // Handle built-in commands
+        if (strcmp(args[0], "exit") == 0) {
+            exit(0);
         }
+        else if (strcmp(args[0], "myinfo") == 0) {
+            printIds();
+        }
+
+        else if (strcmp(args[0], "cd") == 0) {
+            changeDirectory(args);
+        }
+
+        //TODO: Working on Task 6
+        // else if (strcmp(args[0], "^C" == 0)) {
+        // 	signal(SIGINT, sigint_handler);
+        // }
+
+        // if not any of the built in commands, try to execute
+        else {
+            pid = fork();
+            if (pid == 0) {
+                executeCommand(args);                
+            }
+            else if (!background) {
+                wait(&status);
+            }
+        }    
     }
     return 0;
 }
 
 // This function takes in the userInput string and a pointer to a list of strings, args.
 // It then populates the args with the space-separated values from input
-void parseWhiteSpace(char *userInput, char **args) {
+void parseWhiteSpace(char *userInput, char **args, int *background) {
 
     char *word;
     short index = 0;
@@ -82,8 +82,15 @@ void parseWhiteSpace(char *userInput, char **args) {
         word = strtok(NULL, " ");
         index ++;
     }
+    if (strcmp(args[index-1], "&") == 0) {
+        *background = 1;
+        args[index - 1] = NULL;
+    }
+    else {
+        *background = 0;
+        args[index] = NULL;
+    }
 
-    args[index] = NULL;
 }
 
 // This function takes an array of strings and then executes them
@@ -106,7 +113,7 @@ void printIds() {
 }
 
 void changeDirectory(char *args[]) {
-    // if there is a second argument
+    // if the user specified the directory
     if (args[1]) {
         int result = chdir(args[1]);
         if (result == -1) {
