@@ -1,7 +1,7 @@
 # Makefile for Homework 7
 # Jonah Zimmer
 CC = gcc
-CFLAGS = -Wall  -std=c99 -msse3
+CFLAGS = -Wall -msse3
 
 all: shell
 

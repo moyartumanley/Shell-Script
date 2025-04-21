@@ -7,6 +7,7 @@
 
 void parseWhiteSpace(char *input, char **inputList);
 int executeCommand(char *inputs[]);
+void printIds();
 
 int main(void) {
     char userInput[1024];
@@ -18,27 +19,37 @@ int main(void) {
         ret = fgets(userInput, 1024, stdin);
 
         // Remove new line character
-        userInput[strlen(userInput) - 1] = '\0'; // Googled how to remove last two characters from string, gemini reminded me of null terminator
+        // Googled how to remove last two characters from string, gemini reminded me of null terminator
+        userInput[strlen(userInput) - 1] = '\0'; 
 
         // if user entered EOF
         if (ret == NULL) {
-            break;
+            exit(0);
         }
 
         else {
             int status;
-            char *args[10];
+            char *args[100];
             parseWhiteSpace(userInput, args);
 
-            pid = fork();
-            if (pid == 0) {
-                executeCommand(args);
-                // Call this break to exit out of the loop when execvp doesn't run to not get stuck in loop
-                break;
+            if (strcmp(args[0], "exit") == 0) {
+                exit(0);
             }
+
+            else if (strcmp(args[0], "myinfo") == 0) {
+                printIds();
+            }
+
             else {
-                wait(&status);
+                pid = fork();
+                if (pid == 0) {
+                    executeCommand(args);                
+                }
+                else {
+                    wait(&status);
+                }
             }
+    
         }
     }
     return 0;
@@ -65,10 +76,20 @@ void parseWhiteSpace(char *userInput, char **args) {
 // This function takes an array of strings and then executes them
 // it uses the first string as the file name, and the whole array as arguments
 int executeCommand(char *inputs[]) {
-    execvp(inputs[0], inputs);
+
+    printf("%s\n", inputs[0]);
+    int ret = execvp(inputs[0], inputs);
     if (strlen(inputs[0]) > 0) {
         printf("execvp returned with errno: %d\n", errno);
     }
+    exit(ret);
 
-    return -1;
+    return 0;
+}
+
+void printIds() {
+    int pid = getpid();
+    int ppid = getppid();
+
+    printf("Child process id: %d\n Parent process id: %d\n", pid, ppid);
 }
