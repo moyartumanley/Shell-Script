@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <signal.h>
 
 void parseWhiteSpace(char *input, char **inputList);
 int executeCommand(char *inputs[]);
@@ -39,6 +40,11 @@ int main(void) {
             else if (strcmp(args[0], "myinfo") == 0) {
                 printIds();
             }
+
+			//TODO: Working on Task 6
+			else if (strcmp(args[0], "^C" == 0)){
+				signal(SIGINT, sigint_handler);
+			}
 
             else {
                 pid = fork();
@@ -92,4 +98,9 @@ void printIds() {
     int ppid = getppid();
 
     printf("Child process id: %d\n Parent process id: %d\n", pid, ppid);
+}
+
+//TODO: Work on for Task 6
+void sigint_handler(int sig){
+	exit(0);
 }
