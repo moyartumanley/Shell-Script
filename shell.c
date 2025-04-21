@@ -32,14 +32,24 @@ int main(void) {
             char *args[100];
             parseWhiteSpace(userInput, args);
 
+            // Handle built-in commands
             if (strcmp(args[0], "exit") == 0) {
                 exit(0);
             }
-
             else if (strcmp(args[0], "myinfo") == 0) {
                 printIds();
             }
+            else if (strcmp(args[0], "cd") == 0) {
+                // if there is a second argument
+                if (args[1]) {
+                    chdir(args[1]);
+                }
+                else {
+                    chdir(getenv("$HOME")); // THIS ISN'T WORKING
+                }
+            }
 
+            // if not any of the built in commands, try to execute
             else {
                 pid = fork();
                 if (pid == 0) {
