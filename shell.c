@@ -9,6 +9,7 @@
 void parseWhiteSpace(char *input, char **inputList);
 int executeCommand(char *inputs[]);
 void printIds();
+void sigint_handler(int sig);
 
 int main(void) {
     char userInput[1024];
@@ -42,16 +43,21 @@ int main(void) {
             }
 
 			//TODO: Working on Task 6
-			else if (strcmp(args[0], "^C" == 0)){
-				signal(SIGINT, sigint_handler);
-			}
+			// else if (strcmp(args[0], "^C" == 0)){
+			// 	signal(SIGINT, sigint_handler);
+			// }
             else if (strcmp(args[0], "cd") == 0) {
                 // if there is a second argument
                 if (args[1]) {
                     chdir(args[1]);
                 }
+                // if the user just entered cd
                 else {
-                    chdir(getenv("$HOME")); // THIS ISN'T WORKING
+                     // I used this resource in order to realize I should say "HOME" instead of "$HOME"
+                     // https://pubs.opengroup.org/onlinepubs/009696899/functions/getenv.html
+                    char *varName = getenv("HOME");
+                    printf("%s\n", varName);
+                    chdir(varName);
                 }
             }
 
