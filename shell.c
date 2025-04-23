@@ -5,12 +5,14 @@
 #include <string.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <fcntl.h>
 
 void parseWhiteSpace(char *userInput, char **args, int *background);
 int executeCommand(char *inputs[]);
 void printIds();
 void changeDirectory(char *args[]);
 void sigint_handler(int sig);
+int checkRedirection(char *args[]);
 
 int main(void) {
     char userInput[1024];
@@ -34,8 +36,20 @@ int main(void) {
         char *args[100];
 
         int background = 0;
-
         parseWhiteSpace(userInput, args, &background);
+
+        int redir = checkRedirection(args);
+        if (redir >= 0) {
+            if (strcmp(args[redir], ">") == 0) {
+                
+                int file = open(args[redir+1], O_WRONLY | O_CREAT);
+                dup2(file, STDOUT_FILENO);
+            }
+            else if (strcmp(args[redir], "<") == 0) {
+                int file = open(args[redir+1], O_RDONLY);
+                dup2(file, STDIN_FILENO);
+            }
+        }
 
         // Handle built-in commands
         if (strcmp(args[0], "exit") == 0) {
@@ -48,6 +62,8 @@ int main(void) {
         else if (strcmp(args[0], "cd") == 0) {
             changeDirectory(args);
         }
+
+        
 
         //TODO: Working on Task 6
         // else if (strcmp(args[0], "^C" == 0)) {
@@ -71,7 +87,6 @@ int main(void) {
 // This function takes in the userInput string and a pointer to a list of strings, args.
 // It then populates the args with the space-separated values from input
 void parseWhiteSpace(char *userInput, char **args, int *background) {
-
     char *word;
     short index = 0;
 
@@ -82,10 +97,13 @@ void parseWhiteSpace(char *userInput, char **args, int *background) {
         word = strtok(NULL, " ");
         index ++;
     }
+
+    // if it is a background call, overwrite the & with NULL and set background to true
     if (strcmp(args[index-1], "&") == 0) {
         *background = 1;
         args[index - 1] = NULL;
     }
+    // otherwise, set background to false and add the NULL to the end
     else {
         *background = 0;
         args[index] = NULL;
@@ -135,4 +153,16 @@ void changeDirectory(char *args[]) {
 //TODO: Work on for Task 6
 void sigint_handler(int sig){
 	exit(0);
+}
+
+int checkRedirection(char *args[]) {
+    int i = 0;
+    while (args[i] != NULL) {
+        if (strcmp(args[i], "<") == 0 || strcmp(args[i], ">") == 0) {
+            printf("returned index: %d\n", i);
+            return i;
+        }
+        i++;
+    }
+    return -1;
 }
