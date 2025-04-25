@@ -14,6 +14,7 @@ void changeDirectory(char *args[]);
 void parent_sigint_handler(int sig);
 void child_sigint_handler(int sig);
 int checkRedirection(char *args[]);
+void redirect(char *args[], int redir);
 
 
 int foreground_pid = 0;
@@ -75,24 +76,8 @@ int main(void)
 			{
 				int redir = checkRedirection(args);
 				if (redir >= 0) {
-					if (strcmp(args[redir], ">") == 0) {
-						FILE *file = fopen(args[redir+1], "w+");
-						int fileNo = fileno(file);
-						dup2(fileNo, STDOUT_FILENO);
-					}
-					else if (strcmp(args[redir], "<") == 0) {
-						FILE *file = fopen(args[redir+1], "r");
-						int fileNo = fileno(file);
-						dup2(fileNo, STDIN_FILENO);
-					}
-
-					/**
-					https://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
-					helped us realize to overwrite arguments to get rid of redirection and filename
-					*/
-					args[redir] = NULL;
+					redirect(args, redir);
 				}
-
 
 				executeCommand(args);
 
@@ -224,6 +209,10 @@ void parent_sigint_handler(int sig)
 }
 
 
+/**
+* Checks if any of the arguments indicate redirection, and returns the index of either > or <
+* If there is not a redirection character, it returns negative one
+*/
 int checkRedirection(char *args[]) {
     int i = 0;
     while (args[i] != NULL) {
@@ -234,4 +223,29 @@ int checkRedirection(char *args[]) {
         i++;
     }
     return -1;
+}
+
+/**
+* Takes in list of arguments (args) and index of redirection character (redir)
+* It dupes the output or input as indicated to the file name,
+* then overwrites the redirection character to null in order to effectively delete
+* both the redirection character and file name from arguments
+*/
+void redirect(char *args[], int redir) {
+	if (strcmp(args[redir], ">") == 0) {
+		FILE *file = fopen(args[redir+1], "w+");
+		int fileNo = fileno(file);
+		dup2(fileNo, STDOUT_FILENO);
+	}
+	else if (strcmp(args[redir], "<") == 0) {
+		FILE *file = fopen(args[redir+1], "r");
+		int fileNo = fileno(file);
+		dup2(fileNo, STDIN_FILENO);
+	}
+
+	/**
+	https://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
+	helped us realize to overwrite arguments to get rid of redirection and filename
+	*/
+	args[redir] = NULL;
 }
