@@ -11,14 +11,23 @@ void parseWhiteSpace(char *userInput, char **args, int *background);
 int executeCommand(char *inputs[]);
 void printIds();
 void changeDirectory(char *args[]);
-void sigint_handler(int sig);
-int checkRedirection(char *args[]);
+void parent_sigint_handler(int sig);
+void child_sigint_handler(int sig);
+int foreground_pid = 0;
 
 int main(void)
 {
 	char userInput[1024];
 	char *ret;
 	int pid;
+
+	// ensures handler is in place before creation of child processes
+	if (signal(SIGINT, parent_sigint_handler) == SIG_ERR)
+	{
+		printf("\nsignal interruption recieved with error %d\n", errno);
+		exit(1); // exit if error is encountered
+	}
+
 	while (1)
 	{
 		printf("Enter a command: \n");
@@ -32,13 +41,6 @@ int main(void)
 		if (ret == NULL)
 		{
 			exit(0);
-		}
-
-		// ensures handler is in place before creation of child processes
-		if (signal(SIGINT, sigint_handler) == SIG_ERR)
-		{
-			printf("\nsignal interruption recieved with error %d\n", errno);
-			exit(1); // exit if error is encountered
 		}
 
 		int status;
@@ -79,22 +81,28 @@ int main(void)
 		else
 		{
 			pid = fork();
-			if (pid == 0)
+			if (pid == 0) //child process
 			{
-				// child process
 				executeCommand(args);
-				// TODO: Working on Task 6
-				if (getc(stdin) == SIGINT)
+
+				/**
+				 * use default behavior if interrupt signal is recieved, which is termination:
+				 * https://stackoverflow.com/questions/33922223/what-exactly-sig-dfl-do
+				 */
+
+				if (signal(SIGINT, SIG_DFL) == SIG_ERR)
 				{
-					kill(pid, SIGINT);
+					printf("\nsignal interruption recieved with error %d\n", errno);
+					exit(1); // exit if error is encountered
 				}
 			}
-			else
+			else // parent process
 			{
-				// parent process
-				if (!background)
+				if (!background) //if not in background then foreground pid = pid
 				{
-					wait(&status);
+					foreground_pid = pid;
+					wait(&status); //return if 
+					foreground_pid = 0;
 				}
 			}
 		}
@@ -102,8 +110,10 @@ int main(void)
 	return 0;
 }
 
-// This function takes in the userInput string and a pointer to a list of strings, args.
-// It then populates the args with the space-separated values from input
+/**
+ * This function takes in the userInput string and a pointer to a list of strings, args.
+ * It then populates the args with the space-separated values from input.
+ */
 void parseWhiteSpace(char *userInput, char **args, int *background)
 {
 	char *word;
@@ -148,8 +158,10 @@ void parseWhiteSpace(char *userInput, char **args, int *background)
 	}
 }
 
-// This function takes an array of strings and then executes them
-// it uses the first string as the file name, and the whole array as arguments
+/**
+ * This function takes an array of strings and then executes them.
+ * It uses the first string as the file name, and the whole array as arguments.
+ */
 int executeCommand(char *inputs[])
 {
 	int ret = execvp(inputs[0], inputs);
@@ -162,6 +174,9 @@ int executeCommand(char *inputs[])
 	return 0;
 }
 
+/**
+ * Prints process ids
+ */
 void printIds()
 {
 	int pid = getpid();
@@ -170,6 +185,9 @@ void printIds()
 	printf("Child process id: %d\n Parent process id: %d\n", pid, ppid);
 }
 
+/**
+ * Handles change of directory
+ */
 void changeDirectory(char *args[])
 {
 	// if the user specified the directory
@@ -195,12 +213,24 @@ void changeDirectory(char *args[])
 	}
 }
 
-// TODO: Work on for Task 6
-void sigint_handler(int sig)
+/**
+ * Handles signal interruption. If the foreground_pid is a child, then we send the interrupt signal to it.
+ * Otherwise, the signal is not interrupted.
+ */
+void parent_sigint_handler(int sig)
 {
-	printf("\n SIGINT received, terminating child process.\n");
-	exit(0);
+	if (foreground_pid > 0)
+	{
+		printf("\nInterupting process: %d\n", foreground_pid); //debugging print statement, can remove if u want
+		kill(foreground_pid, SIGINT);
+	}
+
+	else
+	{
+		printf("\nNo process to interrupt.\n"); //debugging print statement, can remove if u want
+	}
 }
+
 
 int checkRedirection(char *args[]) {
     int i = 0;
