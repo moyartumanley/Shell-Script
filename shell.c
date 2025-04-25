@@ -13,6 +13,9 @@ void printIds();
 void changeDirectory(char *args[]);
 void parent_sigint_handler(int sig);
 void child_sigint_handler(int sig);
+int checkRedirection(char *args[]);
+
+
 int foreground_pid = 0;
 
 int main(void)
@@ -49,19 +52,6 @@ int main(void)
 		int background = 0;
 		parseWhiteSpace(userInput, args, &background);
 
-        int redir = checkRedirection(args);
-        if (redir >= 0) {
-            if (strcmp(args[redir], ">") == 0) {
-                
-                int file = open(args[redir+1], O_WRONLY | O_CREAT);
-                dup2(file, STDOUT_FILENO);
-            }
-            else if (strcmp(args[redir], "<") == 0) {
-                int file = open(args[redir+1], O_RDONLY);
-                dup2(file, STDIN_FILENO);
-            }
-        }
-
 		// Handle built-in commands
 		if (strcmp(args[0], "exit") == 0)
 		{
@@ -83,6 +73,27 @@ int main(void)
 			pid = fork();
 			if (pid == 0) //child process
 			{
+				int redir = checkRedirection(args);
+				if (redir >= 0) {
+					if (strcmp(args[redir], ">") == 0) {
+						FILE *file = fopen(args[redir+1], "w+");
+						int fileNo = fileno(file);
+						dup2(fileNo, STDOUT_FILENO);
+					}
+					else if (strcmp(args[redir], "<") == 0) {
+						FILE *file = fopen(args[redir+1], "r");
+						int fileNo = fileno(file);
+						dup2(fileNo, STDIN_FILENO);
+					}
+
+					/**
+					https://stackoverflow.com/questions/11515399/implementing-shell-in-c-and-need-help-handling-input-output-redirection
+					helped us realize to overwrite arguments to get rid of redirection and filename
+					*/
+					args[redir] = NULL;
+				}
+
+
 				executeCommand(args);
 
 				/**
@@ -137,25 +148,6 @@ void parseWhiteSpace(char *userInput, char **args, int *background)
         *background = 0;
         args[index] = NULL;
     }
-
-	// I looked at examples of strtok: https://www.geeksforgeeks.org/strtok-strtok_r-functions-c-examples/
-	word = strtok(userInput, " ");
-	while (word != NULL)
-	{
-		args[index] = word;
-		word = strtok(NULL, " ");
-		index++;
-	}
-	if (strcmp(args[index - 1], "&") == 0)
-	{
-		*background = 1;
-		args[index - 1] = NULL;
-	}
-	else
-	{
-		*background = 0;
-		args[index] = NULL;
-	}
 }
 
 /**
