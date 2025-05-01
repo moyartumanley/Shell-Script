@@ -11,31 +11,48 @@ void parseWhiteSpace(char *userInput, char **args, int *background);
 int executeCommand(char *inputs[]);
 void printIds();
 void changeDirectory(char *args[]);
+void foreground_sigint_handler(int sig);
 void parent_sigint_handler(int sig);
-void child_sigint_handler(int sig);
 int checkRedirection(char *args[]);
 int checkPipe(char *args[]);
 void redirect(char *args[], int redir);
 
-
+// Global vars:
 int foreground_pid = 0;
+
 
 int main(void)
 {
 	char userInput[1024];
 	char *ret;
 	int pid;
+	int child_pid;
+	int status;
 
 	// ensures handler is in place before creation of child processes
+	// if (signal(SIGINT, parent_sigint_handler) == SIG_ERR)
+	// {
+	// 	printf("\nsignal interruption recieved with error %d\n", errno);
+	// 	exit(1); // exit if error is encountered
+	// }
+
 	if (signal(SIGINT, parent_sigint_handler) == SIG_ERR)
 	{
-		printf("\nsignal interruption recieved with error %d\n", errno);
-		exit(1); // exit if error is encountered
+		printf("Error recieved during interruption: %d", errno);
+		exit(1);
 	}
 
 	while (1)
 	{
-		printf("Enter a command: \n");
+
+		// reap zombie children
+		while ((child_pid = waitpid(-1, &status, WNOHANG)) > 0)
+		{
+			printf("completed process %d with status %d\n", child_pid, status);
+		}
+
+		printf("\nEnter a command: \n");
+		fflush(stdout);
 		ret = fgets(userInput, 1024, stdin);
 
 		// Remove new line character
@@ -48,7 +65,6 @@ int main(void)
 			exit(0);
 		}
 
-		int status;
 		char *args[100];
 
 		int background = 0;
@@ -73,7 +89,11 @@ int main(void)
 		else
 		{
 			pid = fork();
-			if (pid == 0) //child process
+			if (pid == -1)
+			{
+				printf("\n fork error: %d\n", errno);
+			}
+			else if (pid == 0) // child process
 			{
 
 				/*
@@ -82,17 +102,20 @@ int main(void)
 				*/
 				int pipeLoc = checkPipe(args);
 				int pipefd[2];
-				if (pipeLoc != -1) {
+				if (pipeLoc != -1)
+				{
 					args[pipeLoc] = NULL;
 					pipe(pipefd);
 					int pipePid = fork();
-					if (pipePid != 0) { //first process in pipe
+					if (pipePid != 0)
+					{ // first process in pipe
 						close(pipefd[0]);
 						dup2(pipefd[1], STDOUT_FILENO);
 						close(pipefd[1]);
 						executeCommand(args);
 					}
-					else { // second process in pipe
+					else
+					{ // second process in pipe
 						close(pipefd[1]);
 						dup2(pipefd[0], STDIN_FILENO);
 						close(pipefd[0]);
@@ -101,30 +124,45 @@ int main(void)
 				}
 
 				int redir = checkRedirection(args);
-				if (redir >= 0) {
+				if (redir >= 0)
+				{
 					redirect(args, redir);
 				}
-
 				executeCommand(args);
-
 				/**
 				 * use default behavior if interrupt signal is recieved, which is termination:
 				 * https://stackoverflow.com/questions/33922223/what-exactly-sig-dfl-do
 				 */
-
 				if (signal(SIGINT, SIG_DFL) == SIG_ERR)
 				{
 					printf("\nsignal interruption recieved with error %d\n", errno);
 					exit(1); // exit if error is encountered
 				}
 			}
-			else // parent process
+			else
 			{
-				if (!background) //if not in background then foreground pid = pid
-				{
+				if (!background)
+				{ // current;y in foreground process
 					foreground_pid = pid;
-					wait(&status);
+						if (signal(SIGINT, foreground_sigint_handler) == SIG_ERR)
+					{
+						printf("\nSIGINT recieved with error %d\n", errno);
+						exit(1); // exit if error is encountered
+					}
+
+					// wait for foreground process to compleate
+					waitpid(foreground_pid, &status, 0); // return if
 					foreground_pid = 0;
+
+					if (signal(SIGINT, parent_sigint_handler) == SIG_ERR) {
+                        printf("resetting parent SIGINT handler recieved with error %d\n", errno);
+                        exit(1);
+                    }
+				}
+
+				else // Currently in background process
+				{
+					printf("Background process started with PID %d", pid);
 				}
 			}
 		}
@@ -141,24 +179,27 @@ void parseWhiteSpace(char *userInput, char **args, int *background)
 	char *word;
 	short index = 0;
 
-    // I looked at examples of strtok: https://www.geeksforgeeks.org/strtok-strtok_r-functions-c-examples/
-    word = strtok(userInput, " ");
-    while (word != NULL) { 
-        args[index] = word;
-        word = strtok(NULL, " ");
-        index ++;
-    }
+	// I looked at examples of strtok: https://www.geeksforgeeks.org/strtok-strtok_r-functions-c-examples/
+	word = strtok(userInput, " ");
+	while (word != NULL)
+	{
+		args[index] = word;
+		word = strtok(NULL, " ");
+		index++;
+	}
 
-    // if it is a background call, overwrite the & with NULL and set background to true
-    if (strcmp(args[index-1], "&") == 0) {
-        *background = 1;
-        args[index - 1] = NULL;
-    }
-    // otherwise, set background to false and add the NULL to the end
-    else {
-        *background = 0;
-        args[index] = NULL;
-    }
+	// if it is a background call, overwrite the & with NULL and set background to true
+	if (strcmp(args[index - 1], "&") == 0)
+	{
+		*background = 1;
+		args[index - 1] = NULL;
+	}
+	// otherwise, set background to false and add the NULL to the end
+	else
+	{
+		*background = 0;
+		args[index] = NULL;
+	}
 }
 
 /**
@@ -220,62 +261,77 @@ void changeDirectory(char *args[])
  * Handles signal interruption. If the foreground_pid is a child, then we send the interrupt signal to it.
  * Otherwise, the signal is not interrupted.
  */
-void parent_sigint_handler(int sig)
+void foreground_sigint_handler(int sig)
 {
 	if (foreground_pid > 0)
 	{
-		printf("\nInterupting process: %d\n", foreground_pid); //debugging print statement, can remove if u want
+		printf("\nInterupting foreground process: %d\n", foreground_pid); // debugging print statement, can remove if u want
 		kill(foreground_pid, SIGINT);
-	}
-
-	else
-	{
-		printf("\nNo process to interrupt.\n"); //debugging print statement, can remove if u want
+	} else{
+		printf("\n");
 	}
 }
-
 
 /**
-* Checks if any of the arguments indicate redirection, and returns the index of either > or <
-* If there is not a redirection character, it returns negative one
-*/
-int checkRedirection(char *args[]) {
-    int i = 0;
-    while (args[i] != NULL) {
-        if (strcmp(args[i], "<") == 0 || strcmp(args[i], ">") == 0) {
-            printf("returned index: %d\n", i);
-            return i;
-        }
-        i++;
-    }
-    return -1;
+ * Handles interruption and prompts user for a new command.
+ */
+void parent_sigint_handler (int sig){
+	printf("\n");
+	fflush(stdout);
+	printf("Enter a command: \n");
+    fflush(stdout);
 }
 
-int checkPipe(char *args[]) {
+/**
+ * Checks if any of the arguments indicate redirection, and returns the index of either > or <
+ * If there is not a redirection character, it returns negative one
+ */
+int checkRedirection(char *args[])
+{
 	int i = 0;
-    while (args[i] != NULL) {
-        if (strcmp(args[i], "|") == 0) {
-            return i;
-        }
-        i++;
-    }
-    return -1;
+	while (args[i] != NULL)
+	{
+		if (strcmp(args[i], "<") == 0 || strcmp(args[i], ">") == 0)
+		{
+			printf("returned index: %d\n", i);
+			return i;
+		}
+		i++;
+	}
+	return -1;
+}
+
+int checkPipe(char *args[])
+{
+	int i = 0;
+	while (args[i] != NULL)
+	{
+		if (strcmp(args[i], "|") == 0)
+		{
+			return i;
+		}
+		i++;
+	}
+	return -1;
 }
 
 /**
-* Takes in list of arguments (args) and index of redirection character (redir)
-* It dupes the output or input as indicated to the file name,
-* then overwrites the redirection character to null in order to effectively delete
-* both the redirection character and file name from arguments
-*/
-void redirect(char *args[], int redir) {
-	if (strcmp(args[redir], ">") == 0) {
-		FILE *file = fopen(args[redir+1], "w+");
+ * Takes in list of arguments (args) and index of redirection character (redir)
+ * It dupes the output or input as indicated to the file name,
+ * then overwrites the redirection character to null in order to effectively delete
+ * both the redirection character and file name from arguments
+ */
+void redirect(char *args[], int redir)
+{
+	if (strcmp(args[redir], ">") == 0)
+	{
+		FILE *file = fopen(args[redir + 1], "w+");
 		int fileNo = fileno(file);
 		dup2(fileNo, STDOUT_FILENO);
 	}
-	else if (strcmp(args[redir], "<") == 0) {
-		FILE *file = fopen(args[redir+1], "r");
+	else if (strcmp(args[redir], "<") == 0)
+	{
+		FILE *file = fopen(args[redir + 1], "r");
 		int fileNo = fileno(file);
 		dup2(fileNo, STDIN_FILENO);
 	}
