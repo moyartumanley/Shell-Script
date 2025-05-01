@@ -20,7 +20,6 @@ void redirect(char *args[], int redir);
 // Global vars:
 int foreground_pid = 0;
 
-
 int main(void)
 {
 	char userInput[1024];
@@ -29,13 +28,7 @@ int main(void)
 	int child_pid;
 	int status;
 
-	// ensures handler is in place before creation of child processes
-	// if (signal(SIGINT, parent_sigint_handler) == SIG_ERR)
-	// {
-	// 	printf("\nsignal interruption recieved with error %d\n", errno);
-	// 	exit(1); // exit if error is encountered
-	// }
-
+	// Ensures parent signal handler is in place before creation of child processes
 	if (signal(SIGINT, parent_sigint_handler) == SIG_ERR)
 	{
 		printf("Error recieved during interruption: %d", errno);
@@ -45,7 +38,7 @@ int main(void)
 	while (1)
 	{
 
-		// reap zombie children
+		// Reap zombie children
 		while ((child_pid = waitpid(-1, &status, WNOHANG)) > 0)
 		{
 			printf("completed process %d with status %d\n", child_pid, status);
@@ -56,10 +49,10 @@ int main(void)
 		ret = fgets(userInput, 1024, stdin);
 
 		// Remove new line character
-		// Googled how to remove last two characters from string, gemini reminded me of null terminator
+		// Googled how to remove last two characters from string
 		userInput[strlen(userInput) - 1] = '\0';
 
-		// if user entered EOF
+		// EOF Handling:
 		if (ret == NULL)
 		{
 			exit(0);
@@ -85,7 +78,7 @@ int main(void)
 			changeDirectory(args);
 		}
 
-		// if not any of the built in commands, try to execute
+		// If not any of the built in commands, try to execute
 		else
 		{
 			pid = fork();
@@ -93,7 +86,7 @@ int main(void)
 			{
 				printf("\n fork error: %d\n", errno);
 			}
-			else if (pid == 0) // child process
+			else if (pid == 0) // Child process:
 			{
 
 				/*
@@ -130,39 +123,41 @@ int main(void)
 				}
 				executeCommand(args);
 				/**
-				 * use default behavior if interrupt signal is recieved, which is termination:
+				 * Use default behavior if interrupt signal is recieved, which is termination:
 				 * https://stackoverflow.com/questions/33922223/what-exactly-sig-dfl-do
 				 */
 				if (signal(SIGINT, SIG_DFL) == SIG_ERR)
 				{
-					printf("\nsignal interruption recieved with error %d\n", errno);
+					printf("\nSignal interruption recieved with error %d\n", errno);
 					exit(1); // exit if error is encountered
 				}
 			}
-			else
+			else // Parent process:
 			{
 				if (!background)
-				{ // current;y in foreground process
+				{ // Foreground process:
 					foreground_pid = pid;
-						if (signal(SIGINT, foreground_sigint_handler) == SIG_ERR)
+					if (signal(SIGINT, foreground_sigint_handler) == SIG_ERR)
 					{
 						printf("\nSIGINT recieved with error %d\n", errno);
 						exit(1); // exit if error is encountered
 					}
 
-					// wait for foreground process to compleate
-					waitpid(foreground_pid, &status, 0); // return if
+					// Wait for foreground process to complete
+					waitpid(foreground_pid, &status, 0);
 					foreground_pid = 0;
 
-					if (signal(SIGINT, parent_sigint_handler) == SIG_ERR) {
-                        printf("resetting parent SIGINT handler recieved with error %d\n", errno);
-                        exit(1);
-                    }
+					// Reset parent signal handler once foreground process is completed
+					if (signal(SIGINT, parent_sigint_handler) == SIG_ERR)
+					{
+						printf("\nParent SIGINT handler recieved with error %d\n", errno);
+						exit(1);
+					}
 				}
 
-				else // Currently in background process
+				else // Background process:
 				{
-					printf("Background process started with PID %d", pid);
+					printf("\nBackground process started with PID %d\n", pid);
 				}
 			}
 		}
@@ -240,7 +235,7 @@ void changeDirectory(char *args[])
 		int result = chdir(args[1]);
 		if (result == -1)
 		{
-			printf("change of directory returned with errno: %d\n", errno);
+			printf("Change of directory returned with errno: %d\n", errno);
 		}
 	}
 	// if the user just entered cd
@@ -252,7 +247,7 @@ void changeDirectory(char *args[])
 		int result = chdir(varName);
 		if (result == -1)
 		{
-			printf("change of directory returned with errno: %d\n", errno);
+			printf("Change of directory returned with errno: %d\n", errno);
 		}
 	}
 }
@@ -267,19 +262,22 @@ void foreground_sigint_handler(int sig)
 	{
 		printf("\nInterupting foreground process: %d\n", foreground_pid); // debugging print statement, can remove if u want
 		kill(foreground_pid, SIGINT);
-	} else{
+	}
+	else
+	{
 		printf("\n");
 	}
 }
 
 /**
- * Handles interruption and prompts user for a new command.
+ * Handles signal interruption for a parent process and prompts user for a new command.
  */
-void parent_sigint_handler (int sig){
+void parent_sigint_handler(int sig)
+{
 	printf("\n");
 	fflush(stdout);
 	printf("Enter a command: \n");
-    fflush(stdout);
+	fflush(stdout);
 }
 
 /**
@@ -293,7 +291,7 @@ int checkRedirection(char *args[])
 	{
 		if (strcmp(args[i], "<") == 0 || strcmp(args[i], ">") == 0)
 		{
-			printf("returned index: %d\n", i);
+			printf("Returned index: %d\n", i);
 			return i;
 		}
 		i++;
@@ -301,6 +299,9 @@ int checkRedirection(char *args[])
 	return -1;
 }
 
+/**
+ * Checks whether or not a pipe is present.
+ */
 int checkPipe(char *args[])
 {
 	int i = 0;
