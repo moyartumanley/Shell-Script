@@ -14,6 +14,7 @@ void changeDirectory(char *args[]);
 void parent_sigint_handler(int sig);
 void child_sigint_handler(int sig);
 int checkRedirection(char *args[]);
+int checkPipe(char *args[]);
 void redirect(char *args[], int redir);
 
 
@@ -74,6 +75,31 @@ int main(void)
 			pid = fork();
 			if (pid == 0) //child process
 			{
+
+				/*
+				used resources:
+				https://unix.stackexchange.com/questions/13724/file-descriptors-shell-scripting
+				*/
+				int pipeLoc = checkPipe(args);
+				int pipefd[2];
+				if (pipeLoc != -1) {
+					args[pipeLoc] = NULL;
+					pipe(pipefd);
+					int pipePid = fork();
+					if (pipePid != 0) { //first process in pipe
+						close(pipefd[0]);
+						dup2(pipefd[1], STDOUT_FILENO);
+						close(pipefd[1]);
+						executeCommand(args);
+					}
+					else { // second process in pipe
+						close(pipefd[1]);
+						dup2(pipefd[0], STDIN_FILENO);
+						close(pipefd[0]);
+						executeCommand(args + pipeLoc + 1);
+					}
+				}
+
 				int redir = checkRedirection(args);
 				if (redir >= 0) {
 					redirect(args, redir);
@@ -97,7 +123,7 @@ int main(void)
 				if (!background) //if not in background then foreground pid = pid
 				{
 					foreground_pid = pid;
-					wait(&status); //return if 
+					wait(&status);
 					foreground_pid = 0;
 				}
 			}
@@ -218,6 +244,17 @@ int checkRedirection(char *args[]) {
     while (args[i] != NULL) {
         if (strcmp(args[i], "<") == 0 || strcmp(args[i], ">") == 0) {
             printf("returned index: %d\n", i);
+            return i;
+        }
+        i++;
+    }
+    return -1;
+}
+
+int checkPipe(char *args[]) {
+	int i = 0;
+    while (args[i] != NULL) {
+        if (strcmp(args[i], "|") == 0) {
             return i;
         }
         i++;
