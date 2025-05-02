@@ -61,14 +61,10 @@ int main(void)
 
 		int background = 0;
 
-		// if the user input is blank, just set the first character of args to an empty string.
-		if (userInput[0] == '\n') {
-			args[0] = "";
-		}
-		// if there is a user input, parse it
-		else {
+		// if the user input is not blank, carry on
+		if (userInput[0] != '\n') {
+			
 			parseWhiteSpace(userInput, args, &background);
-		}
 
 		// Handle built-in commands
 		if (strcmp(args[0], "exit") == 0)
@@ -169,6 +165,7 @@ int main(void)
 			}
 		}
 	}
+}
 	return 0;
 }
 
@@ -219,9 +216,9 @@ void parseWhiteSpace(char *userInput, char **args, int *background)
 int executeCommand(char *inputs[])
 {
 	int ret = execvp(inputs[0], inputs);
-	if (strlen(inputs[0]) > 0)
+	if (errno == 2)
 	{
-		printf("execvp returned with errno: %d\n", errno);
+		printf("Command not found: %s\n", inputs[0]);
 	}
 	exit(ret);
 
@@ -306,7 +303,6 @@ int checkRedirection(char *args[])
 	{
 		if (strcmp(args[i], "<") == 0 || strcmp(args[i], ">") == 0)
 		{
-			printf("Returned index: %d\n", i);
 			return i;
 		}
 		i++;
@@ -342,14 +338,24 @@ void redirect(char *args[], int redir)
 	if (strcmp(args[redir], ">") == 0)
 	{
 		FILE *file = fopen(args[redir + 1], "w+");
-		int fileNo = fileno(file);
-		dup2(fileNo, STDOUT_FILENO);
+		if (file == NULL) {
+			printf("No such file: %s\n", args[redir + 1]);
+		}
+		else {
+			int fileNo = fileno(file);
+			dup2(fileNo, STDOUT_FILENO);
+		}
 	}
 	else if (strcmp(args[redir], "<") == 0)
 	{
 		FILE *file = fopen(args[redir + 1], "r");
-		int fileNo = fileno(file);
-		dup2(fileNo, STDIN_FILENO);
+		if (file == NULL) {
+			printf("No such file: %s\n", args[redir + 1]);
+		}
+		else {
+			int fileNo = fileno(file);
+			dup2(fileNo, STDIN_FILENO);
+		}
 	}
 
 	/**
