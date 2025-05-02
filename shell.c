@@ -48,20 +48,27 @@ int main(void)
 		fflush(stdout);
 		ret = fgets(userInput, 1024, stdin);
 
-		// Remove new line character
-		// Googled how to remove last two characters from string
-		userInput[strlen(userInput) - 1] = '\0';
+		// if (userInput[0] == '\n') {
+		// 	exit(0);
+		// }
 
 		// EOF Handling:
 		if (ret == NULL)
 		{
 			exit(0);
 		}
-
 		char *args[100];
 
 		int background = 0;
-		parseWhiteSpace(userInput, args, &background);
+
+		// if the user input is blank, just set the first character of args to an empty string.
+		if (userInput[0] == '\n') {
+			args[0] = "";
+		}
+		// if there is a user input, parse it
+		else {
+			parseWhiteSpace(userInput, args, &background);
+		}
 
 		// Handle built-in commands
 		if (strcmp(args[0], "exit") == 0)
@@ -78,8 +85,8 @@ int main(void)
 			changeDirectory(args);
 		}
 
-		// If not any of the built in commands, try to execute
-		else
+		// If not any of the built in commands, and not an empty input, try to execute
+		else if (userInput[0] != '\n')
 		{
 			pid = fork();
 			if (pid == -1)
@@ -174,8 +181,13 @@ void parseWhiteSpace(char *userInput, char **args, int *background)
 	char *word;
 	short index = 0;
 
+	// Remove new line character
+	// Googled how to remove last character from string, used Gemini's answer
+	userInput[strlen(userInput) - 1] = '\0';
+	
 	// I looked at examples of strtok: https://www.geeksforgeeks.org/strtok-strtok_r-functions-c-examples/
 	word = strtok(userInput, " ");
+	
 	while (word != NULL)
 	{
 		args[index] = word;
@@ -190,11 +202,14 @@ void parseWhiteSpace(char *userInput, char **args, int *background)
 		args[index - 1] = NULL;
 	}
 	// otherwise, set background to false and add the NULL to the end
+
 	else
 	{
 		*background = 0;
 		args[index] = NULL;
+	
 	}
+
 }
 
 /**
