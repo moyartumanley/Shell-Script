@@ -11,6 +11,10 @@
 * Input and output redirection has been implemented.
 * Piping capabilities implemented.
   
+## Future improvements:
+* Current shell supports *only* input or output redirection, not both within one command.
+* Utilize less spacing around prompts and command output.
+  
 ## External Sources:
 Google
 * Jonah googled how to remove the last two characters from a string on line 53 of `./shell.c`
