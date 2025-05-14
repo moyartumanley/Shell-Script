@@ -16,8 +16,7 @@ Portions completed:
 	 only appears after you enter a new command.
 	* A background process is able to be created and ran. Zombie children are reaped at the beginning of the while loop.
 * **Task 8:** No known bugs. Input and output redirection has been implemented.
-* **Task 9:** 
-	* **Known bug:** "Enter a command" for the next call gets printed before the output of the piped function, even when not meant to run in the background.
+* **Task 9:** No known bugs. Piping has been implemented.
 ## External Sources:
 Google
 * Jonah googled how to remove the last two characters from a string on line 53 of `./shell.c`
