@@ -1,23 +1,16 @@
 **Names:** Jonah Zimmer, Moyartu Manley
 
-## Tasks 1-5:
-Portions completed:
-* **Task 1:** No known bugs. User-input is read without error.
-* **Task 2:** No known bugs. Processes are able to be ran and executed.`fork()` occurs without error.
-* **Task 3:** No known bugs. Whitespace is able to be parsed within commands.
-* **Task 4:** No known bugs. Multi-token commands such as `ls -a -l` are able to be executed without error.
-* **Task 5:** No known bugs. Built-in commands such as `exit`, `myinfo`, `cd` and `cd <dir>` have been implemented and execute without error.
-## Tasks 6-9:
-Portions completed:
-* **Task 6:** No known bugs. `CTRL+C` terminates foreground and background processes.
-* **Task 7:** 
-	* **Known bug:** When a background process is terminated with `CTRL+C`, the message:
-	```completed process <PID> with status <STATUS>```
-	 only appears after you enter a new command.
-	* A background process is able to be created and ran. Zombie children are reaped at the beginning of the while loop.
-* **Task 8:** No known bugs. Input and output redirection has been implemented.
-* **Task 9:** 
-	* **Known bug:** "Enter a command" for the next call gets printed before the output of the piped function, even when not meant to run in the background.
+Shell script capabilities:
+* User-input is read without error.
+* Processes are able to be ran and executed.`fork()` occurs without error.
+* Whitespace is able to be parsed within commands.
+* Multi-token commands such as `ls -a -l` are able to be executed without error.
+* Built-in commands such as `exit`, `myinfo`, `cd` and `cd <dir>` have been implemented and execute without error.
+* `CTRL+C` terminates foreground and background processes.
+* A background process is able to be created and ran. Zombie children are reaped at the beginning of the while loop.
+* Input and output redirection has been implemented.
+* Piping capabilities implemented.
+  
 ## External Sources:
 Google
 * Jonah googled how to remove the last two characters from a string on line 53 of `./shell.c`
