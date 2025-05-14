@@ -1,6 +1,6 @@
 **Names:** Jonah Zimmer, Moyartu Manley
 
-Shell script capabilities:
+## Shell script capabilities:
 * User-input is read without error.
 * Processes are able to be ran and executed.`fork()` occurs without error.
 * Whitespace is able to be parsed within commands.
